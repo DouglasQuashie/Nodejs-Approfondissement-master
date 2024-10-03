@@ -27,7 +27,7 @@ class UserService {
     if (!bool) {
       return false;
     }
-    return user._id;
+    return {userId:user._id, role:user.role};
   }
 }
 

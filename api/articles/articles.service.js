@@ -12,8 +12,8 @@ class ArticleService {
       delete(id) {
         return Article.deleteOne({ _id: id });
       }
-    getArticleByUserId(UserId){
-        return Article.find({ user: UserId})
+    getArticleByUserId(userId){
+        return Article.find({ user: userId})
         .populate({
             path: 'user',
             select: '-password'

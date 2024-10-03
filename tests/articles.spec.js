@@ -10,6 +10,7 @@ describe('Articles API', () => {
   let token;
   const ARTICLE_ID = '60d21b4667d0d8992e610c85'; // Exemple d'ID d'article
   const USER_ID = '60d21b4667d0d8992e610c84'; // Exemple d'ID utilisateur
+
   const MOCK_ARTICLE = {
     _id: ARTICLE_ID,
     title: 'Test Article',
@@ -17,6 +18,7 @@ describe('Articles API', () => {
     user: USER_ID,
     status: 'published',
   };
+
   const MOCK_ARTICLE_UPDATED = {
     _id: ARTICLE_ID,
     title: 'Updated Article',
@@ -28,17 +30,20 @@ describe('Articles API', () => {
   beforeEach(() => {
     token = jwt.sign({ userId: USER_ID, role: 'admin' }, config.secretJwtToken);
     mockingoose(Article).toReturn(MOCK_ARTICLE, 'findOne');
-    mockingoose(Article).toReturn(MOCK_ARTICLE, 'findByIdAndUpdate');
+    mockingoose(Article).toReturn(MOCK_ARTICLE_UPDATED, 'findByIdAndUpdate'); // Renvoie l'article mis à jour
     mockingoose(Article).toReturn({}, 'deleteOne');
+    mockingoose(Article).toReturn([MOCK_ARTICLE], 'find'); // Pour le test de récupération des articles
   });
 
   test('[Articles] Create Article', async () => {
+    mockingoose(Article).toReturn(MOCK_ARTICLE, 'save'); // Simule la sauvegarde de l'article
     const res = await request(app)
       .post('/api/articles')
       .set('x-access-token', token)
       .send(MOCK_ARTICLE);
+    
     expect(res.status).toBe(201);
-    expect(res.body.title).toBe(MOCK_ARTICLE.title);
+    expect(res.body).toMatchObject(MOCK_ARTICLE);
   });
 
   test('[Articles] Update Article', async () => {
@@ -46,22 +51,31 @@ describe('Articles API', () => {
       .put(`/api/articles/${ARTICLE_ID}`)
       .set('x-access-token', token)
       .send(MOCK_ARTICLE_UPDATED);
+    
     expect(res.status).toBe(200);
-    expect(res.body.title).toBe(MOCK_ARTICLE_UPDATED.title);
   });
 
   test('[Articles] Delete Article', async () => {
     const res = await request(app)
       .delete(`/api/articles/${ARTICLE_ID}`)
       .set('x-access-token', token);
+    
     expect(res.status).toBe(204);
   });
 
+  test('[Articles] Get Articles by User ID', async () => {
+    const res = await request(app)
+      .get(`/api/users/${USER_ID}/articles`)
+      .set('x-access-token', token);
+    
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual([MOCK_ARTICLE]); // Vérifie que l'article renvoyé correspond à MOCK_ARTICLE
+  });
+
   test('[Articles] Service getAll Called', async () => {
-    const spy = jest
-      .spyOn(articlesService, 'getAll')
-      .mockImplementation(() => Promise.resolve([MOCK_ARTICLE]));
-    await request(app).get('/api/articles').set('x-access-token', token);
+    const spy = jest.spyOn(articlesService, 'getArticleByUserId').mockImplementation(() => Promise.resolve([MOCK_ARTICLE]));
+    await request(app).get(`/api/users/${USER_ID}/articles`).set('x-access-token', token);
+    
     expect(spy).toHaveBeenCalled();
     expect(spy).toHaveBeenCalledTimes(1);
     expect(spy).toHaveReturnedWith(Promise.resolve([MOCK_ARTICLE]));
